@@ -1,0 +1,63 @@
+{
+    "Comment": "Search, download and parse job postings from Indeed",
+    "StartAt": "SearchJob",
+    "States": {
+        "SearchJob": {
+            "Type": "Task",
+            "Resource": "${IndeedSearcherFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "DownloadAndParseJobs"
+        },
+        "DownloadAndParseJobs": {
+            "Type": "Map",
+            "ItemsPath": "$.job_postings",
+            "Iterator": {
+                "StartAt": "DownloadJob",
+                "States": {
+                    "DownloadJob": {
+                        "Type": "Task",
+                        "Resource": "${IndeedDownloaderFunctionArn}",
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "States.TaskFailed"
+                                ],
+                                "IntervalSeconds": 2,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 1
+                            }
+                        ],
+                        "Next": "ParseJob"
+                    },
+                    "ParseJob": {
+                        "Type": "Task",
+                        "Resource": "${IndeedJobParserFunctionArn}",
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "States.TaskFailed"
+                                ],
+                                "IntervalSeconds": 2,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 1
+                            }
+                        ],
+                        "End": true
+                    }
+                }
+            },
+            "End": true
+        }
+
+        
+    }
+}

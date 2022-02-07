@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  tofino-sam
+
+  Sam-based version of tofino
+
+Resources:
+  # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
+  IndeedJobStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/indeed_job.asl.json
+      DefinitionSubstitutions:
+        IndeedSearcherFunctionArn: !GetAtt IndeedSearcherFunction.Arn
+        IndeedDownloaderFunctionArn: !GetAtt IndeedDownloaderFunction.Arn
+        IndeedJobParserFunctionArn: !GetAtt IndeedJobParserFunction.Arn
+      Events:
+        # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-statemachine-statemachineeventsource.html
+        TriggeringSchedule:
+          Type: Schedule
+          Properties:
+            Description: Schedule to run Indeed job state machine every 6 hour
+            Enabled: False # This schedule is disabled by default to avoid incurring charges.
+            Schedule: "rate(6 hours)"
+            Input: "{\"url\":\"https://ca.indeed.com/jobs?q=data+analyst&sort=date&limit=50\"}"
+      # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+      Policies: 
+        - LambdaInvokePolicy:
+            FunctionName: !Ref IndeedSearcherFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref IndeedDownloaderFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref IndeedJobParserFunction
+
+  # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+  IndeedSearcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: functions.indeed_searcher.indeed_searcher.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+
+  IndeedDownloaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: functions.indeed_downloader.indeed_downloader.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+
+  IndeedJobParserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: functions.indeed_job_parser.indeed_job_parser.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+
+Outputs:
+  # Find out more about other implicit resources you can reference within SAM
+  # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-generated-resources.html
+  IndeedJobStateMachineArn:
+    Description: "Indeed Job State machine ARN"
+    Value: !Ref IndeedJobStateMachine
+  IndeedJobStateMachineRoleArn:
+    Description: "IAM Role created for Indeed Job State machine based on the specified SAM Policy Templates"
+    Value: !GetAtt IndeedJobStateMachineRole.Arn
