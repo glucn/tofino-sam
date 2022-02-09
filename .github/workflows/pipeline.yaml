@@ -13,7 +13,7 @@ env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.SAM_PIPELINE_ACCESS_KEY_ID_BETA }}
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.SAM_PIPELINE_SECRET_ACCESS_KEY_BETA }}
   SAM_TEMPLATE: template.yaml
-  TESTING_STACK_NAME: tofino-sam
+  TESTING_STACK_NAME: tofino-sam-dev
   TESTING_PIPELINE_EXECUTION_ROLE: arn:aws:iam::430714039810:role/aws-sam-cli-managed-Beta-pip-PipelineExecutionRole-JWMSDNIRHN5N
   TESTING_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::430714039810:role/aws-sam-cli-managed-Beta-CloudFormationExecutionR-6HUL69HJMEL7
   TESTING_ARTIFACTS_BUCKET: aws-sam-cli-managed-beta-pipeline-artifactsbucket-1w17qiom7f71x
@@ -192,6 +192,7 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}
+            --no-confirm-changeset
 
   integration-test:
     if: github.ref == 'refs/heads/main'
