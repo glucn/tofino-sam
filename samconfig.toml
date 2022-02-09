@@ -6,6 +6,6 @@ stack_name = "tofino-sam"
 s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-i7fdu8osucqa"
 s3_prefix = "tofino-sam"
 region = "us-west-2"
-confirm_changeset = true
+confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 image_repositories = []
