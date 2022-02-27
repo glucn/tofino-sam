@@ -82,6 +82,30 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
+      Timeout: 30
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - 'subnet-0b64d55b9af846a53' # TODO: Migrate over from tofino CFN infrastructure
+          - 'subnet-07f8bae144d20df3b' # TODO: Migrate over from tofino CFN infrastructure
+      Environment:
+        Variables:
+          INDEED_JOB_POSTING_S3_BUCKET: !Ref IndeedJobPostingBucket
+      Policies:
+        - VPCAccessPolicy: {}
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: '*' # TODO: Restrict to a certain resource
+        - KMSDecryptPolicy:
+            KeyId: '*' # TODO: Restrict to a certain resource
+        - Statement:
+          - Sid: InvokeLambdaFunctionPolicy
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: '*' # TODO: Restrict to a certain resource
+        - S3WritePolicy:
+            BucketName: !Ref IndeedJobPostingBucket
 
   IndeedJobParserFunction:
     Type: AWS::Serverless::Function
@@ -91,6 +115,15 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
+
+  IndeedJobPostingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
 
 Outputs:
   # Find out more about other implicit resources you can reference within SAM

@@ -19,23 +19,19 @@ class MySQLClient:
 
     @classmethod
     def _get_secret(cls):
-        logging.info("_get_secret")
         if not cls._secret:
             secret_json = SecretManager.get_secret(config.MYSQL_SECRET_NAME)
-            logging.info(f'secret_json {secret_json}')
             cls._secret = json.loads(secret_json, object_hook=lambda d: SimpleNamespace(**d))
         return cls._secret
 
     @classmethod
     def _get_engine(cls):
-        logging.info("_get_engine")
         if not cls._engine:
             cls._engine = create_engine(cls.get_sqlalchemy_connection_string())
         return cls._engine
 
     @classmethod
     def _get_session_maker(cls):
-        logging.info("_get_session_maker")
         if not cls._session_maker:
             cls._session_maker = sessionmaker(bind=cls._get_engine())
         return cls._session_maker

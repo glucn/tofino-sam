@@ -3,13 +3,14 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "tofino-sam:StockSellerFunction",
+            "name": "src:functions/indeed_searcher/indeed_searcher.lambda_handler (python3.9)",
             "invokeTarget": {
-                "target": "template",
-                "templatePath": "${workspaceFolder}/template.yaml",
-                "logicalId": "StockSellerFunction"
+                "target": "code",
+                "projectRoot": "${workspaceFolder}/src",
+                "lambdaHandler": "functions/indeed_searcher/indeed_searcher.lambda_handler"
             },
             "lambda": {
+                "runtime": "python3.9",
                 "payload": {},
                 "environmentVariables": {}
             }
@@ -17,13 +18,29 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "tofino-sam:StockSellerFunction",
+            "name": "src:functions/indeed_job_parser/indeed_job_parser.lambda_handler (python3.9)",
             "invokeTarget": {
-                "target": "template",
-                "templatePath": "${workspaceFolder}/template.yaml",
-                "logicalId": "StockSellerFunction"
+                "target": "code",
+                "projectRoot": "${workspaceFolder}/src",
+                "lambdaHandler": "functions/indeed_job_parser/indeed_job_parser.lambda_handler"
             },
             "lambda": {
+                "runtime": "python3.9",
+                "payload": {},
+                "environmentVariables": {}
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "src:functions/indeed_downloader/indeed_downloader.lambda_handler (python3.9)",
+            "invokeTarget": {
+                "target": "code",
+                "projectRoot": "${workspaceFolder}/src",
+                "lambdaHandler": "functions/indeed_downloader/indeed_downloader.lambda_handler"
+            },
+            "lambda": {
+                "runtime": "python3.9",
                 "payload": {},
                 "environmentVariables": {}
             }
