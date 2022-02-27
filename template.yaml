@@ -6,6 +6,18 @@ Description: >
   Sam-based version of tofino
 
 Resources:
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: The security group for tofino Lmabda functions
+      VpcId: 'vpc-04c5058d5d30e2414' # TODO: Migrate over from tofino CFN infrastructure
+      SecurityGroupEgress:
+        # TODO: Restrict the outbound traffic
+        - CidrIp: '0.0.0.0/0'
+          FromPort: -1
+          ToPort: -1
+          IpProtocol: '-1'
+
   # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
   IndeedJobStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -42,6 +54,25 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
+      Timeout: 30
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - 'subnet-0b64d55b9af846a53' # TODO: Migrate over from tofino CFN infrastructure
+          - 'subnet-07f8bae144d20df3b' # TODO: Migrate over from tofino CFN infrastructure
+      Policies:
+        - VPCAccessPolicy: {}
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: '*' # TODO: Restrict to a certain resource
+        - KMSDecryptPolicy:
+            KeyId: '*' # TODO: Restrict to a certain resource
+        - Statement:
+          - Sid: InvokeLambdaFunctionPolicy
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: '*' # TODO: Restrict to a certain resource
 
   IndeedDownloaderFunction:
     Type: AWS::Serverless::Function

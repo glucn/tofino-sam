@@ -1,0 +1,14 @@
+# AWS
+AWS_REGION = "us-west-2"
+
+MYSQL_HOST = "tmwsfdnrcwbmp4.ca9x6xep5ulo.us-west-2.rds.amazonaws.com"
+MYSQL_DB_NAME = "TOFINO_DB"
+MYSQL_SECRET_NAME = "MySQL_application"
+
+# Indeed
+CRAWLER_INDEED_JOB_POSTING_SQS_QUEUE_URL = 'https://sqs.us-west-2.amazonaws.com/430714039810/tofino-IndeedJobPostingCrawlerQueue-USON2IW35VV8'
+CRAWLER_INDEED_JOB_SEARCH_RESULT_SQS_QUEUE_URL = 'https://sqs.us-west-2.amazonaws.com/430714039810/tofino-IndeedJobSearchResultCrawlerQueue-GH0NRC0D4XJO'
+SCRAPER_INDEED_JOB_POSTING_SQS_QUEUE_URL = 'https://sqs.us-west-2.amazonaws.com/430714039810/tofino-IndeedJobPostingNotificationQueue-E2ASFNKM95RK'
+SCRAPER_INDEED_JOB_SEARCH_RESULT_SQS_QUEUE_URL = 'https://sqs.us-west-2.amazonaws.com/430714039810/tofino-IndeedJobSearchResultNotificationQueue-1C072NHTD2010'
+BUCKET_INDEED_JOB_POSTING = 'tofino-indeedjobpostingbucket-vwf5ud6vdepl'
+BUCKET_INDEED_JOB_SEARCH_RESULT = 'tofino-indeedjobsearchresultbucket-qy5bbfkrksma'
