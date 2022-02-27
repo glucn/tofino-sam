@@ -10,6 +10,7 @@ from crawler.proxies_manager import ProxiesManager
 logging.getLogger().setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    # Input: {"url":"https://ca.indeed.com/jobs?q=data+analyst&sort=date&limit=50"}
     logging.info("Entering Indeex Searcher lambda_handler")
 
     url = _parse_event(event)
