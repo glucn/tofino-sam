@@ -20,6 +20,7 @@
         "DownloadAndParseJobs": {
             "Type": "Map",
             "ItemsPath": "$.job_postings",
+            "MaxConcurrency": 1,
             "Iterator": {
                 "StartAt": "DownloadJob",
                 "States": {
@@ -31,9 +32,9 @@
                                 "ErrorEquals": [
                                     "States.TaskFailed"
                                 ],
-                                "IntervalSeconds": 2,
-                                "MaxAttempts": 3,
-                                "BackoffRate": 1
+                                "IntervalSeconds": 15,
+                                "MaxAttempts": 5,
+                                "BackoffRate": 2
                             }
                         ],
                         "Next": "ParseJob"
@@ -46,9 +47,9 @@
                                 "ErrorEquals": [
                                     "States.TaskFailed"
                                 ],
-                                "IntervalSeconds": 2,
-                                "MaxAttempts": 3,
-                                "BackoffRate": 1
+                                "IntervalSeconds": 15,
+                                "MaxAttempts": 5,
+                                "BackoffRate": 2
                             }
                         ],
                         "End": true
@@ -57,7 +58,5 @@
             },
             "End": true
         }
-
-        
     }
 }
