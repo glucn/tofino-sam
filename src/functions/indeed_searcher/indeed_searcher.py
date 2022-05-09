@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     content, _ = ProxiesManager().crawl(url)
 
     soup = BeautifulSoup(content, 'html.parser')
-    urls = [_parse_url(x['href']) for x in soup.find_all('a', class_='result')]
+    urls = [_parse_url(x['href']) for x in soup.find_all('a', class_='jcs-JobTitle')]
 
     # TODO: check if the URL already exists
 
