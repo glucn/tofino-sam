@@ -6,9 +6,11 @@ from urllib.parse import parse_qs, urlparse, urlunparse
 from aws.s3 import S3
 from config import BUCKET_INDEED_JOB_POSTING_ENV_KEY
 from crawler.proxies_manager import ProxiesManager
-from db_operator.mysql_client import MySQLClient
 from exceptions.exceptions import MalFormedMessageException, RetryableException
-from models.job_posting import JobPosting
+from models.job_posting import (create_job_posting,
+                                get_job_posting_by_external_id,
+                                get_job_posting_by_origin_url,
+                                update_job_posting_origin_url)
 
 _SOURCE = 'ca.indeed.com'
 _UPLOAD_BUCKET = os.environ[BUCKET_INDEED_JOB_POSTING_ENV_KEY]
@@ -18,7 +20,7 @@ logging.getLogger().setLevel(logging.INFO)
 def lambda_handler(event, context):
     # Input: {"url":"https://ca.indeed.com/rc/clk?jk=1b9d06ebdd34033a&fccid=3002307a9e5b4706&vjs=3"}
 
-    logging.info("Entering Indeex Searcher lambda_handler")
+    logging.info("Entering Indeex Downloader lambda_handler")
     
     url = _parse_event(event)
     logging.info(f'Parsed url {url}')
@@ -45,9 +47,7 @@ def _parse_event(event) -> str:
     return event['url']
 
 def _should_download(url: str) -> bool:
-    session = MySQLClient.get_session()
-    existing = JobPosting.get_by_origin_url(session, url)
-    session.close()
+    existing = get_job_posting_by_origin_url(url)
 
     if existing:
         logging.info(f'The Job Posting of {url} already exist, skipping...')
@@ -67,9 +67,8 @@ def _process_response(origin_url: str, final_url: str, content: str) -> str:
         logging.warning(f'Cannot determine external ID from the URL {final_url}, discarding...')
         return
 
-    session = MySQLClient.get_session()
     try:
-        existing = JobPosting.get_by_external_id(session=session, source=source, external_id=external_id)
+        existing = get_job_posting_by_external_id(external_id)
         if existing:
             # TODO: consider updating existing record?
             logging.info(
@@ -77,15 +76,13 @@ def _process_response(origin_url: str, final_url: str, content: str) -> str:
 
             if not existing.origin_url:
                 logging.info(f'Updating JobPosting record [{existing.id}] with origin_url [{origin_url}]')
-                JobPosting.update(session=session, job_posting_id=existing.id, origin_url=origin_url)
-                session.commit()
+                update_job_posting_origin_url(job_posting_id=existing.id, origin_url=origin_url)
 
-            return ''
+            return
 
         logging.info(f'Creating new JobPosting...')
 
-        job_posting = JobPosting.create(
-            session=session,
+        job_posting = create_job_posting(
             source=source,
             external_id=external_id,
             url=_prepend_netloc_to_relative_url(final_url),
@@ -97,23 +94,14 @@ def _process_response(origin_url: str, final_url: str, content: str) -> str:
         S3.upload_file_obj(BytesIO(content.encode('utf-8')), _UPLOAD_BUCKET, file_key)
         logging.info(f'Uploaded file to "{_UPLOAD_BUCKET}/{file_key}"')
 
-        session.commit()
         logging.info(f'Created JobPosting record {job_posting.id}')
         return file_key
 
     except Exception as ex:
-        # TODO: change back to logging.error
+        logging.error('Error processing the downloaded content')
         logging.exception(ex)
-        logging.warning(f'Error processing, rolling back...')
-        session.rollback()
-        raise RetryableException
-    except:
-        # TODO: change back to logging.error
-        logging.warning(f'Unexpected exception, rolling back...')
-        session.rollback()
-        raise RetryableException
-    finally:
-        session.close()
+        raise RetryableException(ex)
+
 
 def _parse_external_id(url: str) -> str:
     parsed_url = urlparse(url)

@@ -1,16 +1,18 @@
+from __future__ import annotations
 import logging
+
+import os
 import uuid
-from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from aws.dynamo_db import DynamoDB
+from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
+from config import DYNAMODB_TABLE_JOB_POSTING_ENV_KEY
 
-Base = declarative_base()
+_JOB_POSTING_TABLE_NAME = os.environ[DYNAMODB_TABLE_JOB_POSTING_ENV_KEY]
 
 
-@dataclass
-class JobPosting(Base):
+class JobPosting():
     """ Data model of Job Postings """
     id: str
     external_id: str
@@ -18,95 +20,171 @@ class JobPosting(Base):
     origin_url: str
     source: str
     title: str
-    company_id: str
-    company_name: str
-    location_string: str
-    posted_datetime: datetime
+    # company_id: str
+    # company_name: str
+    location: str
     job_description: str
+    posted_datetime: datetime
     created_datetime: datetime
     updated_datetime: datetime
 
-    __tablename__ = "job_posting"
-
-    id = Column(String(256), primary_key=True)
-    external_id = Column(String(256))
-    url = Column(String(256))
-    origin_url = Column(String(2048))
-    source = Column(String(256))
-    title = Column(String(256))
-    company_id = Column(String(50))
-    company_name = Column(String(256))
-    location_string = Column(String(256))
-    posted_datetime = Column(DateTime)
-    job_description = Column(String(10000))
-    created_datetime = Column(DateTime)
-    updated_datetime = Column(DateTime)
-
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
-            if isinstance(v, str):
-                try:
-                    self.__setattr__(k, datetime.strptime(v, "%Y-%m-%dT%H:%M:%S%z"))
-                except ValueError:  # This exception is expected if the string is not a ISO8601 datetime
-                    self.__setattr__(k, v)
-            else:
-                self.__setattr__(k, v)
+            self.__setattr__(k, v)
+
+    def to_dynamo_object(self) -> dict:
+        logging.info(f'to_dynamo_object {self}')
+        serializer = TypeSerializer()
+        ddb_item = {
+            'Id': serializer.serialize(self.id)
+            }
+
+        if hasattr(self, 'external_id') and self.external_id:
+            ddb_item['ExternalId'] = serializer.serialize(self.external_id)
+
+        if hasattr(self, 'url') and self.url:
+            ddb_item['Url'] = serializer.serialize(self.url)
+
+        if hasattr(self, 'origin_url') and self.origin_url:
+            ddb_item['OriginUrl'] = serializer.serialize(self.origin_url)
+
+        if hasattr(self, 'source') and self.source:
+            ddb_item['Source'] = serializer.serialize(self.source)
+
+        if hasattr(self, 'title') and self.title:
+            ddb_item['Title'] = serializer.serialize(self.title)
+
+        if hasattr(self, 'location') and self.location:
+            ddb_item['Location'] = serializer.serialize(self.location)
+
+        if hasattr(self, 'job_description') and self.job_description:
+            ddb_item['JobDescription'] = serializer.serialize(self.job_description)
+
+        if hasattr(self, 'posted_datetime') and self.posted_datetime:
+            ddb_item['PostedDatetime'] = serializer.serialize(self.posted_datetime.isoformat())
+
+        if hasattr(self, 'created_datetime') and self.created_datetime:
+            ddb_item['CreatedDatetime'] = serializer.serialize(self.created_datetime.isoformat())
+
+        if hasattr(self, 'updated_datetime') and self.updated_datetime:
+            ddb_item['UpdatedDatetime'] = serializer.serialize(self.updated_datetime.isoformat())
+
+        return ddb_item
+
 
     @classmethod
-    def get(cls, session, job_posting_id):
-        return session.query(cls).filter(cls.id == job_posting_id).one_or_none()
+    def from_dynamo_object(cls, dynamo_object: dict) -> JobPosting:
+        deserializer = TypeDeserializer()
 
-    @classmethod
-    def get_by_external_id(cls, session, source, external_id):
-        return session.query(cls).filter(cls.source == source, cls.external_id == external_id).one_or_none()
+        kwargs = {
+            'id': deserializer.deserialize(dynamo_object.get('Id'))
+        }
 
-    @classmethod
-    def get_by_url(cls, session, url):
-        return session.query(cls).filter(cls.url == url).one_or_none()
+        kwargs['external_id'] = deserializer.deserialize(dynamo_object.get('ExternalId', {'S': ''}))
+        kwargs['url'] = deserializer.deserialize(dynamo_object.get('Url', {'S': ''}))
+        kwargs['origin_url'] = deserializer.deserialize(dynamo_object.get('OriginUrl', {'S': ''}))
+        kwargs['source'] = deserializer.deserialize(dynamo_object.get('Source', {'S': ''}))
+        kwargs['title'] = deserializer.deserialize(dynamo_object.get('Title', {'S': ''}))
+        kwargs['location'] = deserializer.deserialize(dynamo_object.get('Location', {'S': ''}))
+        kwargs['job_description'] = deserializer.deserialize(dynamo_object.get('JobDescription', {'S': ''}))
+        kwargs['posted_datetime'] = datetime.fromisoformat(deserializer.deserialize(dynamo_object.get('PostedDatetime', {'S': '1970-01-01T00:00:00.000000'})))
+        kwargs['created_datetime'] = datetime.fromisoformat(deserializer.deserialize(dynamo_object.get('CreatedDatetime', {'S': '1970-01-01T00:00:00.000000'})))
+        kwargs['updated_datetime'] = datetime.fromisoformat(deserializer.deserialize(dynamo_object.get('UpdatedDatetime', {'S': '1970-01-01T00:00:00.000000'})))
 
-    @classmethod
-    def get_by_origin_url(cls, session, origin_url):
-        return session.query(cls).filter(cls.origin_url == origin_url).one_or_none()
+        return cls(**kwargs)
 
-    @classmethod
-    def create(cls, session, **kwargs):
-        if 'id' not in kwargs:
-            kwargs['id'] = str(uuid.uuid4())
+def get_job_posting(job_posting_id: str) -> JobPosting:
+    ddb_item = DynamoDB.get_item(table_name=_JOB_POSTING_TABLE_NAME, key_attr={'Id': job_posting_id})
+    if ddb_item:
+        return JobPosting.from_dynamo_object(ddb_item)
+    else:
+        return None
 
-        job_posting = cls(**kwargs)
-        job_posting.created_datetime = datetime.now()
+def get_job_posting_by_external_id(external_id: str) -> JobPosting:
+    serializer = TypeSerializer()
 
-        session.add(job_posting)
-        return job_posting
+    ddb_items = DynamoDB.query(
+        table_name=_JOB_POSTING_TABLE_NAME,
+        index_name='Index_ExternalId',   
+        key_condition_expression='ExternalId = :externalId',
+        expression_attribute_values={':externalId': serializer.serialize(external_id)}
+    )
+    if ddb_items:
+        return JobPosting.from_dynamo_object(ddb_items[0])
+    else:
+        return None
 
-    @classmethod
-    def update(cls, session, job_posting_id, **kwargs):
-        logging.debug(f'update is called with {job_posting_id}, {kwargs}')
-        job_posting = session.query(cls).filter(cls.id == job_posting_id).one()
+def get_job_posting_by_origin_url(origin_url: str) -> JobPosting:
+    serializer = TypeSerializer()
 
-        if not job_posting:
-            raise ValueError(u'job posting with id %s does not exist', job_posting_id)
+    ddb_items = DynamoDB.query(
+        table_name=_JOB_POSTING_TABLE_NAME,
+        index_name='Index_OriginUrl',
+        key_condition_expression='OriginUrl = :originUrl',
+        expression_attribute_values={':originUrl': serializer.serialize(origin_url)}
+    )
+    if ddb_items:
+        return JobPosting.from_dynamo_object(ddb_items[0])
+    else:
+        return None
 
-        for k, v in kwargs.items():
-            if type(v) == str:
-                setattr(job_posting, k, cls._cleansing_string(v))
-            else:
-                setattr(job_posting, k, v)
+def create_job_posting(**kwargs) -> JobPosting:
+    if 'id' not in kwargs:
+        kwargs['id'] = str(uuid.uuid4())
 
-        job_posting.updated_datetime = datetime.now()
-        session.add(job_posting)
-        return job_posting
+    job_posting = JobPosting(**kwargs)
+    job_posting.created_datetime = datetime.now()
 
-    @classmethod
-    def delete(cls, session, job_posting_id):
-        job_posting = session.query(cls).filter(cls.id == job_posting_id).one()
+    logging.info(f"Creating JobPosting {job_posting}")
 
-        if not job_posting:
-            raise ValueError(u'job posting with id %s does not exist', job_posting_id)
+    serializer = TypeSerializer()
 
-        session.delete(job_posting)
-        return job_posting
+    DynamoDB.put_item(
+        table_name=_JOB_POSTING_TABLE_NAME,
+        item=job_posting.to_dynamo_object()
+    )
 
-    @classmethod
-    def _cleansing_string(cls, content: str) -> str:
-        return content.replace(u'\ufeff', '')
+    return job_posting
+
+def update_job_posting_origin_url(job_posting_id: str, origin_url: str) -> None:
+    serializer = TypeSerializer()
+
+    expression = (
+        'SET '
+        'OriginUrl = :originUrl, '
+        'UpdatedDatetime = :now'
+    )
+
+    attribute_values = {
+        ':job_posting_id': serializer.serialize(job_posting_id),
+        ':originUrl': serializer.serialize(origin_url),
+        ':now': serializer.serialize(datetime.now().isoformat())
+    }
+
+    DynamoDB.update_item(
+        table_name=_JOB_POSTING_TABLE_NAME,
+        key={'Id': serializer.serialize(origin_url)},
+        update_expression=expression,
+        expression_attribute_values=attribute_values,
+        condition_expression='Id = :job_posting_id' # Only update when the Id exists
+    )
+
+
+# def update_job_posting(job_posting_id: str, **kwargs) -> JobPosting:
+#     job_posting = session.query(cls).filter(cls.id == job_posting_id).one()
+
+#     if not job_posting:
+#         raise ValueError(u'job posting with id %s does not exist', job_posting_id)
+
+#     for k, v in kwargs.items():
+#         if type(v) == str:
+#             setattr(job_posting, k, _cleansing_string(v))
+#         else:
+#             setattr(job_posting, k, v)
+
+#     job_posting.updated_datetime = datetime.now()
+#     session.add(job_posting)
+#     return job_posting
+
+def _cleansing_string(content: str) -> str:
+    return content.replace(u'\ufeff', '')
