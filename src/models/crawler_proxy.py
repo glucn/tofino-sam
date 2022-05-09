@@ -1,57 +1,69 @@
-from dataclasses import dataclass
+import os
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, Integer, or_
-from sqlalchemy.ext.declarative import declarative_base
+from aws.dynamo_db import DynamoDB
+from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
+from config import DYNAMODB_TABLE_CRAWLER_PROXY_ENV_KEY
 
-Base = declarative_base()
+_CRAWLER_PROXY_TABLE_NAME = os.environ[DYNAMODB_TABLE_CRAWLER_PROXY_ENV_KEY]
 
-
-@dataclass
-class CrawlerProxy(Base):
+class CrawlerProxy():
     """ Data model of crawler proxy """
     id: str
     region: str
     arn: str
-    deactivated_datetime: datetime
+    deactivated_epoch_second: int
     deactivated_count: int
 
-    __tablename__ = "crawler_proxy"
+    def __init__(self, dynamo_object):
+        deserializer = TypeDeserializer()
 
-    id = Column(String(256), primary_key=True)
-    region = Column(String(256))
-    arn = Column(String(1024))
-    deactivated_datetime = Column(DateTime)
-    deactivated_count = Column(Integer)
+        self.id = deserializer.deserialize(dynamo_object.get('Id'))
+        self.region = deserializer.deserialize(dynamo_object.get('Region'))
+        self.arn = deserializer.deserialize(dynamo_object.get('Arn'))
+        self.deactivated_epoch_second = int(deserializer.deserialize(dynamo_object.get('DeactivatedEpochSecond')))
+        self.deactivated_count = int(deserializer.deserialize(dynamo_object.get('DeactivatedCount')))
 
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if isinstance(v, str):
-                try:
-                    self.__setattr__(k, datetime.strptime(v, "%Y-%m-%dT%H:%M:%S%z"))
-                except ValueError:  # This exception is expected if the string is not a ISO8601 datetime
-                    self.__setattr__(k, v)
-            else:
-                self.__setattr__(k, v)
 
-    @classmethod
-    def get(cls, session, proxy_id):
-        return session.query(cls).filter(cls.id == proxy_id).one_or_none()
+def get_crawler_proxy(proxy_id: str):
+    ddb_item = DynamoDB.get_item(table_name=_CRAWLER_PROXY_TABLE_NAME, key_attr={'Id': proxy_id})
+    return CrawlerProxy(ddb_item)
 
-    @classmethod
-    def list_active(cls, session, last_deactivate):
-        return session.query(cls).filter(or_(cls.deactivated_datetime < last_deactivate, cls.deactivated_datetime == None)).all()
+def list_active_crawler_proxy(last_deactivate_datetime: datetime):
+    serializer = TypeSerializer()
 
-    @classmethod
-    def update(cls, session, proxy_id, **kwargs):
-        proxy = session.query(cls).filter(cls.id == proxy_id).one()
+    filter_expression = 'DeactivatedEpochSecond < :last_deactivate'
+    attribute_values = {':last_deactivate': serializer.serialize(int(last_deactivate_datetime.timestamp()))}
 
-        if not proxy:
-            raise ValueError(u'crawler proxy with id %s does not exist', proxy_id)
+    ddb_items = DynamoDB.scan(
+        table_name=_CRAWLER_PROXY_TABLE_NAME,
+        filter_expression=filter_expression,
+        expression_attribute_values=attribute_values
+    )
 
-        for k, v in kwargs.items():
-            setattr(proxy, k, v)
+    return [CrawlerProxy(ddb_item) for ddb_item in ddb_items]
 
-        proxy.updated_datetime = datetime.now()
-        session.add(proxy)
-        return proxy
+def deactivate_crawler_proxy(proxy_id) -> None:
+    serializer = TypeSerializer()
+
+    expression = (
+        'SET '
+        'DeactivatedEpochSecond = :deactivatedEpochSecond, '
+        'DeactivatedCount = DeactivatedCount + :inc, '
+        'UpdatedDatetime = :now'
+    )
+
+    attribute_values = {
+        ':proxy_id': serializer.serialize(proxy_id),
+        ':deactivatedEpochSecond': serializer.serialize(int(datetime.now().timestamp())),
+        ':inc': serializer.serialize(1),
+        ':now': serializer.serialize(datetime.now().isoformat())
+    }
+
+    DynamoDB.update_item(
+        table_name=_CRAWLER_PROXY_TABLE_NAME,
+        key={'Id': serializer.serialize(proxy_id)},
+        update_expression=expression,
+        expression_attribute_values=attribute_values,
+        condition_expression='Id = :proxy_id' # Only update when the Id exists
+    )
