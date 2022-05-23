@@ -20,7 +20,7 @@ logging.getLogger().setLevel(logging.INFO)
 def lambda_handler(event, context):
     # Input: {"url":"https://ca.indeed.com/rc/clk?jk=1b9d06ebdd34033a&fccid=3002307a9e5b4706&vjs=3"}
 
-    logging.info("Entering Indeex Downloader lambda_handler")
+    logging.info("Entering Indeed Downloader lambda_handler")
     
     url = _parse_event(event)
     logging.info(f'Parsed url {url}')

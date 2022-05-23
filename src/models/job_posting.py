@@ -21,7 +21,7 @@ class JobPosting():
     source: str
     title: str
     # company_id: str
-    # company_name: str
+    company_name: str
     location: str
     job_description: str
     posted_datetime: datetime
@@ -33,7 +33,6 @@ class JobPosting():
             self.__setattr__(k, v)
 
     def to_dynamo_object(self) -> dict:
-        logging.info(f'to_dynamo_object {self}')
         serializer = TypeSerializer()
         ddb_item = {
             'Id': serializer.serialize(self.id)
@@ -53,9 +52,12 @@ class JobPosting():
 
         if hasattr(self, 'title') and self.title:
             ddb_item['Title'] = serializer.serialize(self.title)
+        
+        if hasattr(self, 'company_name') and self.company_name:
+            ddb_item['company_name'] = serializer.serialize(self.company_name)
 
         if hasattr(self, 'location') and self.location:
-            ddb_item['Location'] = serializer.serialize(self.location)
+            ddb_item['LocationString'] = serializer.serialize(self.location)
 
         if hasattr(self, 'job_description') and self.job_description:
             ddb_item['JobDescription'] = serializer.serialize(self.job_description)
@@ -85,7 +87,8 @@ class JobPosting():
         kwargs['origin_url'] = deserializer.deserialize(dynamo_object.get('OriginUrl', {'S': ''}))
         kwargs['source'] = deserializer.deserialize(dynamo_object.get('Source', {'S': ''}))
         kwargs['title'] = deserializer.deserialize(dynamo_object.get('Title', {'S': ''}))
-        kwargs['location'] = deserializer.deserialize(dynamo_object.get('Location', {'S': ''}))
+        kwargs['company_name'] = deserializer.deserialize(dynamo_object.get('CompanyName', {'S': ''}))
+        kwargs['location'] = deserializer.deserialize(dynamo_object.get('LocationString', {'S': ''}))
         kwargs['job_description'] = deserializer.deserialize(dynamo_object.get('JobDescription', {'S': ''}))
         kwargs['posted_datetime'] = datetime.fromisoformat(deserializer.deserialize(dynamo_object.get('PostedDatetime', {'S': '1970-01-01T00:00:00.000000'})))
         kwargs['created_datetime'] = datetime.fromisoformat(deserializer.deserialize(dynamo_object.get('CreatedDatetime', {'S': '1970-01-01T00:00:00.000000'})))
@@ -137,8 +140,6 @@ def create_job_posting(**kwargs) -> JobPosting:
 
     logging.info(f"Creating JobPosting {job_posting}")
 
-    serializer = TypeSerializer()
-
     DynamoDB.put_item(
         table_name=_JOB_POSTING_TABLE_NAME,
         item=job_posting.to_dynamo_object()
@@ -151,7 +152,7 @@ def update_job_posting_origin_url(job_posting_id: str, origin_url: str) -> None:
 
     expression = (
         'SET '
-        'OriginUrl = :originUrl, '
+        'OriginUrl = :originUrl,'
         'UpdatedDatetime = :now'
     )
 
@@ -163,28 +164,52 @@ def update_job_posting_origin_url(job_posting_id: str, origin_url: str) -> None:
 
     DynamoDB.update_item(
         table_name=_JOB_POSTING_TABLE_NAME,
-        key={'Id': serializer.serialize(origin_url)},
+        key={'Id': serializer.serialize(job_posting_id)},
         update_expression=expression,
         expression_attribute_values=attribute_values,
         condition_expression='Id = :job_posting_id' # Only update when the Id exists
     )
 
 
-# def update_job_posting(job_posting_id: str, **kwargs) -> JobPosting:
-#     job_posting = session.query(cls).filter(cls.id == job_posting_id).one()
+def update_job_posting_from_parsed_info(job_posting_id: str, **kwargs) -> None:
+    serializer = TypeSerializer()
 
-#     if not job_posting:
-#         raise ValueError(u'job posting with id %s does not exist', job_posting_id)
+    expression = 'SET '
 
-#     for k, v in kwargs.items():
-#         if type(v) == str:
-#             setattr(job_posting, k, _cleansing_string(v))
-#         else:
-#             setattr(job_posting, k, v)
+    attribute_values = {
+        ':job_posting_id': serializer.serialize(job_posting_id),
+        ':now': serializer.serialize(datetime.now().isoformat())
+    }
 
-#     job_posting.updated_datetime = datetime.now()
-#     session.add(job_posting)
-#     return job_posting
+    if 'title' in kwargs:
+        expression += 'Title = :title, '
+        attribute_values[':title'] = serializer.serialize(kwargs['title'])
+
+    if 'company_name' in kwargs:
+        expression += 'CompanyName = :companyName, '
+        attribute_values[':companyName'] = serializer.serialize(kwargs['company_name'])
+
+    if 'location' in kwargs:
+        expression += 'LocationString = :location, '
+        attribute_values[':location'] = serializer.serialize(kwargs['location'])
+
+    if 'job_description' in kwargs:
+        expression += 'JobDescription = :jobDescription, '
+        attribute_values[':jobDescription'] = serializer.serialize(_cleansing_string(kwargs['job_description']))
+
+    if 'posted_datetime' in kwargs:
+        expression += 'PostedDatetime = :postedDatetime, '
+        attribute_values[':postedDatetime'] = serializer.serialize(kwargs['posted_datetime'].isoformat())
+
+    expression += 'UpdatedDatetime = :now'
+
+    DynamoDB.update_item(
+        table_name=_JOB_POSTING_TABLE_NAME,
+        key={'Id': serializer.serialize(job_posting_id)},
+        update_expression=expression,
+        expression_attribute_values=attribute_values,
+        condition_expression='Id = :job_posting_id' # Only update when the Id exists
+    )
 
 def _cleansing_string(content: str) -> str:
     return content.replace(u'\ufeff', '')

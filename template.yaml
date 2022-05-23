@@ -166,6 +166,16 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
+      Timeout: 30
+      Environment:
+        Variables:
+          INDEED_JOB_POSTING_S3_BUCKET: !Ref IndeedJobPostingBucket
+          JOB_POSTING_TABLE: !Ref JobPostingTable
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref IndeedJobPostingBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobPostingTable
 
   IndeedJobPostingBucket:
     Type: AWS::S3::Bucket
