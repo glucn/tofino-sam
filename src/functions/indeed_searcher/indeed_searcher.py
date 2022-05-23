@@ -11,7 +11,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     # Input: {"url":"https://ca.indeed.com/jobs?q=data+analyst&sort=date&limit=50"}
-    logging.info("Entering Indeex Searcher lambda_handler")
+    logging.info("Entering Indeed Searcher lambda_handler")
 
     url = _parse_event(event)
     logging.info(f'Parsed url {url}')
