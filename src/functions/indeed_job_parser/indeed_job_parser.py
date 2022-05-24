@@ -14,9 +14,13 @@ logging.getLogger().setLevel(logging.INFO)
 def lambda_handler(event, context):
     # Input example: {"s3_key":"00007cb1-ff0e-467e-9e5e-ee59433ee89f"}
 
-    logging.info("Entering Indeed Parser lambda_handler")
-    
+    logging.info('Entering Indeed Parser lambda_handler')
+
     object_key = event['s3_key']
+
+    if not object_key:
+        logging.warning('Received null or empty s3_key, skipping')
+        return {}
 
     logging.info(f'Downloading file from bucket "{_DOWNLOAD_BUCKET}", object key "{object_key}"...')
     file_str = S3.download_file_str(_DOWNLOAD_BUCKET, object_key)
