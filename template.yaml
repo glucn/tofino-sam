@@ -186,6 +186,22 @@ Resources:
         IgnorePublicAcls: True
         RestrictPublicBuckets: True
 
+  IndeedJobStateMachineExecutionFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Alarm when IndeedJobStateMachine fails'
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+      Threshold: 1
+      EvaluationPeriods: 1
+      Namespace: 'AWS/States'
+      Dimensions:
+        - Name: 'StateMachineArn'
+          Value: !Ref IndeedJobStateMachine
+      MetricName: 'ExecutionsFailed'
+      Period: 60 # 1 minute
+      Statistic: 'Sum'
+      ActionsEnabled: false # TODO: Change this in the next commit
+
 Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-generated-resources.html
