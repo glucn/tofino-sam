@@ -186,21 +186,62 @@ Resources:
         IgnorePublicAcls: True
         RestrictPublicBuckets: True
 
-  IndeedJobStateMachineExecutionFailureAlarm:
-    Type: AWS::CloudWatch::Alarm
+  EmailNotificationTopic:
+    Type: AWS::SNS::Topic
     Properties:
-      AlarmDescription: 'Alarm when IndeedJobStateMachine fails'
-      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
-      Threshold: 1
-      EvaluationPeriods: 1
-      Namespace: 'AWS/States'
-      Dimensions:
-        - Name: 'StateMachineArn'
-          Value: !Ref IndeedJobStateMachine
-      MetricName: 'ExecutionsFailed'
-      Period: 60 # 1 minute
-      Statistic: 'Sum'
-      ActionsEnabled: false # TODO: Change this in the next commit
+      DisplayName: 'Tofino-Email Notification'
+      Subscription:
+        - Protocol: 'email'
+          Endpoint: 'madcated.lu+tofino-sam@gmail.com'
+  
+  EmailNotificationTopicRole:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref EmailNotificationTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'events.amazonaws.com'
+            Action: 'sns:Publish'
+            Resource: !Ref EmailNotificationTopic
+
+  IndeedJobStateMachineExecutionFailureEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'Send SNS topic when IndeedJobStateMachine execution fails or timeoout'
+      EventPattern:
+        source:
+          - 'aws.states'
+        detail-type:
+          - 'Step Functions Execution Status Change'
+        detail:
+          status:
+            - 'FAILED'
+            - 'TIMED_OUT'
+          stateMachineArn:
+            - !Ref IndeedJobStateMachine
+      Targets:
+        - Id: 'SNS-Notification'
+          Arn: !Ref EmailNotificationTopic
+
+  # IndeedJobStateMachineExecutionFailureAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmDescription: 'Alarm when IndeedJobStateMachine fails'
+  #     ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+  #     Threshold: 1
+  #     EvaluationPeriods: 1
+  #     Namespace: 'AWS/States'
+  #     Dimensions:
+  #       - Name: 'StateMachineArn'
+  #         Value: !Ref IndeedJobStateMachine
+  #     MetricName: 'ExecutionsFailed'
+  #     Period: 60 # 1 minute
+  #     Statistic: 'Sum'
+  #     ActionsEnabled: false # TODO: Change this in the next commit
 
 Outputs:
   # Find out more about other implicit resources you can reference within SAM
