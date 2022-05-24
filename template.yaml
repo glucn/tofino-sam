@@ -221,6 +221,7 @@ Resources:
           status:
             - 'FAILED'
             - 'TIMED_OUT'
+            - 'ABORTED'
           stateMachineArn:
             - !Ref IndeedJobStateMachine
       Targets:

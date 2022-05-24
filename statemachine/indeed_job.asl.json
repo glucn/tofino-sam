@@ -5,14 +5,15 @@
         "SearchJob": {
             "Type": "Task",
             "Resource": "${IndeedSearcherFunctionArn}",
+            "TimeoutSeconds": 30,
             "Retry": [
                 {
                     "ErrorEquals": [
                         "States.TaskFailed"
                     ],
-                    "IntervalSeconds": 15,
+                    "IntervalSeconds": 1,
                     "MaxAttempts": 5,
-                    "BackoffRate": 2
+                    "BackoffRate": 2.0
                 }
             ],
             "Next": "DownloadAndParseJobs"
@@ -27,14 +28,15 @@
                     "DownloadJob": {
                         "Type": "Task",
                         "Resource": "${IndeedDownloaderFunctionArn}",
+                        "TimeoutSeconds": 30,
                         "Retry": [
                             {
                                 "ErrorEquals": [
                                     "States.TaskFailed"
                                 ],
-                                "IntervalSeconds": 15,
+                                "IntervalSeconds": 1,
                                 "MaxAttempts": 5,
-                                "BackoffRate": 2
+                                "BackoffRate": 2.0
                             }
                         ],
                         "Next": "ParseJob"
@@ -42,14 +44,15 @@
                     "ParseJob": {
                         "Type": "Task",
                         "Resource": "${IndeedJobParserFunctionArn}",
+                        "TimeoutSeconds": 30,
                         "Retry": [
                             {
                                 "ErrorEquals": [
                                     "States.TaskFailed"
                                 ],
-                                "IntervalSeconds": 15,
+                                "IntervalSeconds": 1,
                                 "MaxAttempts": 5,
-                                "BackoffRate": 2
+                                "BackoffRate": 2.0
                             }
                         ],
                         "End": true
