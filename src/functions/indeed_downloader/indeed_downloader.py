@@ -26,16 +26,18 @@ def lambda_handler(event, context):
     logging.info(f'Parsed url {url}')
 
     if not _should_download(url):
-        return
+        return _build_response('')
 
     content, redirected_url = ProxiesManager().crawl(url)
 
     s3_key = _process_response(url, redirected_url, content)
     
-    result = {
+    return _build_response(s3_key)
+
+def _build_response(s3_key: str) -> dict:
+    return {
         "s3_key": s3_key
     }
-    return result
 
 def _parse_event(event) -> str:
     """
@@ -101,7 +103,6 @@ def _process_response(origin_url: str, final_url: str, content: str) -> str:
         logging.error('Error processing the downloaded content')
         logging.exception(ex)
         raise RetryableException(ex)
-
 
 def _parse_external_id(url: str) -> str:
     parsed_url = urlparse(url)
