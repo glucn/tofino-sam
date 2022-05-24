@@ -177,6 +177,30 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref JobPostingTable
 
+  StateMachineExecutionNotifierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: functions.state_machine_execution_notifier.state_machine_execution_notifier.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Timeout: 30
+      Environment:
+        Variables:
+          STATE_MACHINE_EXECUTION_NOTIFICATION_TOPIC: !Ref EmailNotificationTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt EmailNotificationTopic.TopicName
+
+  StateMachineExecutionNotifierLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StateMachineExecutionNotifierFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt IndeedJobStateMachineExecutionFailureEventRule.Arn
+
   IndeedJobPostingBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -193,20 +217,6 @@ Resources:
       Subscription:
         - Protocol: 'email'
           Endpoint: 'madcated.lu+tofino-sam@gmail.com'
-  
-  EmailNotificationTopicRole:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      Topics:
-        - !Ref EmailNotificationTopic
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: 'events.amazonaws.com'
-            Action: 'sns:Publish'
-            Resource: !Ref EmailNotificationTopic
 
   IndeedJobStateMachineExecutionFailureEventRule:
     Type: AWS::Events::Rule
@@ -225,24 +235,23 @@ Resources:
           stateMachineArn:
             - !Ref IndeedJobStateMachine
       Targets:
-        - Id: 'SNS-Notification'
-          Arn: !Ref EmailNotificationTopic
-
-  # IndeedJobStateMachineExecutionFailureAlarm:
-  #   Type: AWS::CloudWatch::Alarm
-  #   Properties:
-  #     AlarmDescription: 'Alarm when IndeedJobStateMachine fails'
-  #     ComparisonOperator: 'GreaterThanOrEqualToThreshold'
-  #     Threshold: 1
-  #     EvaluationPeriods: 1
-  #     Namespace: 'AWS/States'
-  #     Dimensions:
-  #       - Name: 'StateMachineArn'
-  #         Value: !Ref IndeedJobStateMachine
-  #     MetricName: 'ExecutionsFailed'
-  #     Period: 60 # 1 minute
-  #     Statistic: 'Sum'
-  #     ActionsEnabled: false # TODO: Change this in the next commit
+        - Id: 'Lambda-Notification'
+          Arn: !GetAtt StateMachineExecutionNotifierFunction.Arn
+          InputTransformer:
+            InputPathsMap:
+              accountId: '$.account'
+              region: '$.region'
+              stateMachineArn: '$.detail.stateMachineArn'
+              executionArn: '$.detail.executionArn'
+              status: '$.detail.status'
+              startDate: '$.detail.startDate'
+              stopDate: '$.detail.stopDate'
+            InputTemplate: |
+              {
+                "status": <status>,
+                "region": <region>,
+                "executionArn": <executionArn>
+              }             
 
 Outputs:
   # Find out more about other implicit resources you can reference within SAM

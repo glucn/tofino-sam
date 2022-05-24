@@ -3,11 +3,11 @@
 from .lambda_function import Lambda
 from .s3 import S3
 from .secret_manager import SecretManager
-# from .sqs import SQS
+from .sns import SNS
 
 __all__ = [
     'SecretManager',
-    #  'SQS',
+    'SNS',
     'S3',
     'Lambda',
 ]
