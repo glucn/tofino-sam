@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from aws.s3 import S3
 from bs4 import BeautifulSoup
 from config import BUCKET_INDEED_JOB_POSTING_ENV_KEY
+from exceptions.exceptions import JobPostingParseError
 from models.job_posting import update_job_posting_from_parsed_info
 
 _DOWNLOAD_BUCKET = os.environ[BUCKET_INDEED_JOB_POSTING_ENV_KEY]
@@ -70,6 +71,21 @@ def _parse_job_posting(file: str, file_name: str) -> dict:
     posted_datetime = _parse_posted_datetime(soup)
 
     logging.info(f'Parsed data: {job_title}, {company_name}, {location}')
+
+    if not job_title:
+        raise JobPostingParseError('Cannot parse JobTitle')
+    
+    if not company_name:
+        raise JobPostingParseError('Cannot parse CompanyName')
+
+    if not location:
+        raise JobPostingParseError('Cannot parse Location')
+
+    if not job_description:
+        raise JobPostingParseError('Cannot parse JobDescription')
+
+    if not posted_datetime:
+        raise JobPostingParseError('Cannot parse PostedDateTime')
 
     return {
         'title': job_title, 

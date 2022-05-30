@@ -8,3 +8,7 @@ class NotRetryableException(Exception):
 
 class MalFormedMessageException(NotRetryableException):
     pass
+
+
+class JobPostingParseError(NotRetryableException):
+    pass
