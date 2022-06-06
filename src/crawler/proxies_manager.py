@@ -26,7 +26,7 @@ class ProxiesManager:
     def _deactivate_proxy(proxy_id: str) -> None:
         try:
             deactivate_crawler_proxy(proxy_id)
-            logging.info('Proxy {proxy_id} deactivated')
+            logging.info(f'Proxy {proxy_id} deactivated')
         except Exception as ex:
             raise RetryableException(ex)
 
