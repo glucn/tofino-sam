@@ -84,9 +84,9 @@ Resources:
         TriggeringSchedule:
           Type: Schedule
           Properties:
-            Description: Schedule to run Indeed job state machine every 6 hour
-            Enabled: False # This schedule is disabled by default to avoid incurring charges.
-            Schedule: "rate(6 hours)"
+            Description: Schedule to run Indeed job state machine every 4 hour
+            Enabled: True
+            Schedule: "rate(4 hours)"
             Input: "{\"url\":\"https://ca.indeed.com/jobs?q=data+analyst&sort=date&limit=50\"}"
       # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
       Policies: 
