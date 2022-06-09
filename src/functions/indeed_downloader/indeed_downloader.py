@@ -80,6 +80,13 @@ def _process_response(origin_url: str, final_url: str, content: str) -> str:
                 logging.info(f'Updating JobPosting record [{existing.id}] with origin_url [{origin_url}]')
                 update_job_posting_origin_url(job_posting_id=existing.id, origin_url=origin_url)
 
+            if not S3.does_object_exist(bucket=_UPLOAD_BUCKET, key=existing.id):
+                # The data is in DB, but the S3 file does not exist
+                # The previous run might have failed, re-upload the file to S3
+                logging.info(f'Uploading file to "{_UPLOAD_BUCKET}/{existing.id}"...')
+                S3.upload_file_obj(BytesIO(content.encode('utf-8')), _UPLOAD_BUCKET, existing.id)
+                logging.info(f'Uploaded file to "{_UPLOAD_BUCKET}/{existing.id}"')
+
             return
 
         logging.info(f'Creating new JobPosting...')

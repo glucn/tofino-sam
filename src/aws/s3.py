@@ -24,6 +24,33 @@ class S3:
         return cls._client
 
     @classmethod
+    def does_object_exist(cls, bucket: str, key: str) -> bool:
+        """
+        Check if an object exists, using head_object() API
+        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.head_object
+        """
+        if not bucket:
+            raise ValueError(u'bucket is required')
+
+        if not key:
+            raise ValueError(u'key is required')
+
+        try:
+            cls._get_client().head_object(
+                Bucket=bucket,
+                Key=key,
+            )
+
+            return True # No error, so the object exists
+
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return False # 404 error, so the object does not eixst
+
+            logging.error(e)
+            raise e
+
+    @classmethod
     def download_file_str(cls, bucket: str, key: str, encoding: str = 'utf-8') -> str:
         """
         Download an object from S3 to a string.

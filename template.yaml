@@ -106,7 +106,7 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           CRAWLER_PROXY_TABLE: !Ref CrawlerProxyTable
@@ -133,7 +133,7 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           INDEED_JOB_POSTING_S3_BUCKET: !Ref IndeedJobPostingBucket
@@ -166,7 +166,7 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
-      Timeout: 30
+      Timeout: 10
       Environment:
         Variables:
           INDEED_JOB_POSTING_S3_BUCKET: !Ref IndeedJobPostingBucket
