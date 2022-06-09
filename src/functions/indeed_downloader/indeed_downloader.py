@@ -51,7 +51,7 @@ def _parse_event(event) -> str:
 def _should_download(url: str) -> bool:
     existing = get_job_posting_by_origin_url(url)
 
-    if existing:
+    if existing and S3.does_object_exist(bucket=_UPLOAD_BUCKET, key=existing.id):
         logging.info(f'The Job Posting of {url} already exist, skipping...')
         return False
 
