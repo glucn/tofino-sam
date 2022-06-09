@@ -145,7 +145,7 @@ Resources:
             SecretArn: '*' # TODO: Restrict to a certain resource
         - KMSDecryptPolicy:
             KeyId: '*' # TODO: Restrict to a certain resource
-        - S3WritePolicy:
+        - S3CrudPolicy:
             BucketName: !Ref IndeedJobPostingBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref CrawlerProxyTable
