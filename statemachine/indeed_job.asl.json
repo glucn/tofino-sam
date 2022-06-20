@@ -5,14 +5,14 @@
         "SearchJob": {
             "Type": "Task",
             "Resource": "${IndeedSearcherFunctionArn}",
-            "TimeoutSeconds": 30,
+            "TimeoutSeconds": 120,
             "Retry": [
                 {
                     "ErrorEquals": [
                         "States.TaskFailed"
                     ],
                     "IntervalSeconds": 1,
-                    "MaxAttempts": 5,
+                    "MaxAttempts": 10,
                     "BackoffRate": 2.0
                 }
             ],
@@ -28,14 +28,14 @@
                     "DownloadJob": {
                         "Type": "Task",
                         "Resource": "${IndeedDownloaderFunctionArn}",
-                        "TimeoutSeconds": 30,
+                        "TimeoutSeconds": 120,
                         "Retry": [
                             {
                                 "ErrorEquals": [
                                     "States.TaskFailed"
                                 ],
                                 "IntervalSeconds": 1,
-                                "MaxAttempts": 5,
+                                "MaxAttempts": 10,
                                 "BackoffRate": 2.0
                             }
                         ],
